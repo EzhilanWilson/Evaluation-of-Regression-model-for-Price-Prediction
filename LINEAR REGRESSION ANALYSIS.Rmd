@@ -1,0 +1,363 @@
+---
+title: "LINEAR REGRESSION ANALYSIS"
+author: "Ezhilan Wilson (22121128) & Athul S (22121011)"
+output: word_document
+---
+
+# LINEAR REGRESSION ANALYSIS
+
+-   Step-wise Regression Analysis
+    1.  Forward Selection
+    2.  Backward Elimination
+-   Cross Validation
+-   Regularization
+    1.  Ridge Regression
+    2.  Laso Regression
+-   Multi-linear Regression
+
+**Loading necessary library for analysis**
+
+```{r include=FALSE}
+# Loading necessary library for Linear regression analysis
+
+library(readxl) # Package for reading excel file - data set
+library(boot) # Package for Cross validation
+library(glmnet) # Package for Regularization
+library(car) # Package for Model Comparison & Residual Analysis
+library(glmnet) # Package for Model Comparison & Residual Analysis 
+library(boot) # Package for Model Comparison & Residual Analysis 
+library(caret) # Package for Model Comparison & Residual Analysis 
+library(ggplot2) # package for plotting 
+
+```
+
+## STEPWISE REGRESSION ANALYSIS
+
+### BACKWARD ELIMINATION
+
+**CODE:**
+
+```{r}
+
+# Load the data set
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+# Full model with all predictors
+fullmodel <- lm(AVG_EPRICE ~ ., data = ml)
+
+# Perform backward selection
+backwardmodel <- step(fullmodel, direction = "backward")
+
+# Print the final model
+print(backwardmodel)
+```
+
+**INTERPRETATION:** The model is estimating the relationship between the average price of some product (AVG_EPRICE) and several predictor variables. Here is the interpretation of the output:
+
+The estimated coefficients represent the effect of each predictor variable on the average price, assuming all other variables are held constant.
+
+The intercept (Intercept) is the estimated average price when all predictor variables are zero.
+
+### FORWARD SELECTION
+
+**CODE:**
+
+```{r}
+
+# Load the dataset
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+# Minimal model with no predictors
+start_model <- lm(AVG_EPRICE ~ 1, data = ml)
+
+# List of potential predictors
+scope <- list(lower = start_model, upper = lm(AVG_EPRICE ~ ., data = ml))
+
+# Perform forward selection
+forward_model <- step(start_model, direction = "forward", scope = scope)
+
+# Print the final model
+print(forward_model)
+
+```
+
+**INTERPRETATION:** The final model, **`AVG_EPRICE`** \~ **`CPI`** + **`COAL_USED`** + **`AVG_WEATHER`** + **`S&P 500`** + **`CRUDE_OIL PRICE`** + **`NATURAL_GAS USED`** + **`E_DEMAND`** + **`HEATING_OIL PRICE`** + **`VIX`** + **`PETROL_COKE USED`**, includes all the selected predictor variables.
+
+The coefficients section at the end of the output provides the estimated coefficients for each predictor variable in the final model. These coefficients represent the relationship between each predictor variable and the response variable when accounting for the other variables in the model.
+
+## CROSS-VALIDATION
+
+**CODE:**
+
+```{r}
+
+# Load the data set
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+# Creating a linear model
+model = glm(AVG_EPRICE~., data = ml)
+
+# Defining the cross validation method
+cv_model = cv.glm(ml, model, K = 11)
+
+# Print the final model
+print(cv_model$delta)
+
+```
+**INTERPRETATION:** The delta values you provided represent the difference in the performance metric (e.g., mean squared error, mean absolute error) between the training set and the validation set for each fold. A smaller delta indicates that the model generalizes well to unseen data and is less prone to over fitting.
+
+
+## REGULARIZATION
+
+**CODE:**
+
+```{r}
+
+# Load the data set
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+# Prepare matrix of predictors and response variable
+x <- model.matrix(AVG_EPRICE ~ ., ml)[,-1] # remove intercept column
+y <- ml$AVG_EPRICE
+
+# Fit ridge regression model
+ridge_model <- glmnet(x, y, alpha = 0)
+
+# Fit lasso regression model
+lasso_model <- glmnet(x, y, alpha = 1)
+
+# Print models
+print(ridge_model)
+print(lasso_model)
+
+```
+**INTERPRETATION:** The regularization output, you can observe how the model's performance (%Dev) changes as lambda varies. You can select the optimal lambda value based on your specific requirements, such as balancing model complexity and predictive accuracy.
+
+
+**For selecting the optimal lambda value**
+
+```{r}
+
+# Perform cross-validation for ridge model
+cv.ridge <- cv.glmnet(x, y, alpha = 0)
+
+# Perform cross-validation for lasso model
+cv.lasso <- cv.glmnet(x, y, alpha = 1)
+
+# Print optimal lambda values
+print(cv.ridge$lambda.min)
+print(cv.lasso$lambda.min)
+```
+**INTERPRETATION:** The output you provided shows the optimal lambda values for the ridge and lasso models, which are determined through cross-validation. Lambda (also known as alpha) is a regularization parameter that controls the complexity of the model and helps prevent over fitting.
+
+For the ridge model, the optimal lambda value is 0.0647758. This suggests that a higher amount of regularization is preferred for this model, indicating that the model should be more constrained and less prone to overfitting.
+
+For the lasso model, the optimal lambda value is 0.0004569805. This indicates that a lower amount of regularization is preferred for this model, suggesting that the model can be less constrained and have more freedom to fit the data closely.
+
+### RIDGE REGRESSION MODEL
+
+**CODE:**
+
+```{r}
+
+# Load the dataset
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+# Define the response variable and predictors
+y <- ml$AVG_EPRICE
+X <- as.matrix(ml[, -1]) # Exclude the mpg column
+
+# Fit a ridge regression model
+ridge_model <- glmnet(X, y, alpha = 0, lambda = 1)
+
+# Print the coefficients
+print(coef(ridge_model))
+```
+
+### LASSO REGRESSION MODEL
+
+**CODE:**
+
+```{r}
+# Fit a lasso regression model
+lasso_model <- glmnet(X, y, alpha = 1, lambda = 1)
+
+# Print the coefficients
+print(coef(lasso_model))
+```
+
+# MODEL COMPARISON
+
+**CODE:**
+
+```{r}
+
+# Prepare the data
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+x <- model.matrix(AVG_EPRICE ~ ., ml)[,-1]
+y <- ml$AVG_EPRICE
+
+# -----
+
+# Linear regression with forward and backward selection
+
+start_model <- lm(AVG_EPRICE ~ 1, data = ml)
+scope <- list(lower = start_model, upper = lm(AVG_EPRICE ~ ., data = ml))
+forward_model <- step(start_model, direction = "forward", scope = scope)
+backward_model <- step(lm(AVG_EPRICE ~ ., data = ml), direction = "backward")
+
+# -----
+
+# Cross-validation model
+
+cv_model <- train(AVG_EPRICE ~ ., data = ml, method = "lm",trControl = trainControl(method = "cv", number = 5))
+
+# -----
+
+# Regularization models
+
+ridge_model <- glmnet(x, y, alpha = 0)
+lasso_model <- glmnet(x, y, alpha = 1)
+
+# -----
+
+# Predict and calculate MSE
+
+predictions_forward <- predict(forward_model, ml)
+predictions_backward <- predict(backward_model, ml)
+predictions_cv <- predict(cv_model, ml)
+predictions_ridge <- predict(ridge_model, s = cv.glmnet(x, y, alpha = 0)$lambda.min, newx = x)
+predictions_lasso <- predict(lasso_model, s = cv.glmnet(x, y, alpha = 1)$lambda.min, newx = x)
+
+mse_forward <- mean((ml$AVG_EPRICE - predictions_forward)^2)
+mse_backward <- mean((ml$AVG_EPRICE - predictions_backward)^2)
+mse_cv <- mean((ml$AVG_EPRICE - predictions_cv)^2)
+mse_ridge <- mean((ml$AVG_EPRICE - predictions_ridge)^2)
+mse_lasso <- mean((ml$AVG_EPRICE - predictions_lasso)^2)
+
+# Print MSE for each model
+cat("MSE for forward selection: ", mse_forward, "\n")
+cat("MSE for backward selection: ", mse_backward, "\n")
+cat("MSE for cross-validation model: ", mse_cv, "\n")
+cat("MSE for ridge regression: ", mse_ridge, "\n")
+cat("MSE for lasso regression: ", mse_lasso, "\n")
+
+```
+
+
+
+## RESIDUAL ANALYSIS
+
+**CODE:**
+
+```{r}
+
+# Plot residuals for Forward selection, Backward Elimination and Cross Validation
+
+plot(resid(forward_model), main="Residual Plot for Forward Selection Model")
+plot(resid(backward_model), main="Residual Plot for Backward Selection Model")
+plot(resid(cv_model$finalModel), main="Residual Plot for Cross- Validation Model")
+
+```
+
+**INTERPRETATION:**
+Random Scatter: The random scattering of residuals indicates that the current forward selection model captures the majority of the relevant information in the data. The residuals are not showing any discernible pattern, suggesting that the model adequately accounts for the relationships between the predictor variables and the response variable.
+
+Outliers: The presence of outliers at -0.4 and 0.6 on the y-axis suggests the presence of a few data points that have unusually large or small residuals compared to the rest of the data. These outliers could potentially have a significant impact on the model's results, and it would be important to investigate their nature and potential implications.
+
+Overall, the observation of random scattering and the presence of outliers in the forward residual plot indicates that the current model provides a reasonably good fit to the data.
+
+
+```{r}
+# Plot residual for Ridge regression and Lasso Regression
+
+plot(predict(forward_model, ml) - ml$AVG_EPRICE, main="Residual Plot for Ridge Regression Model")
+plot(predict(backward_model, ml) - ml$AVG_EPRICE, main="Residual Plot for Lasso Regression Model")
+
+```
+
+**INTERPRETATION:**
+Well, with the addition of both Ridge and Lasso regression in your model, the outliers have changed their values to -0.6 and 0.4 on the y-axis. These new outliers suggest the presence of a few data points that have unusually large or small residuals compared to the majority of the data. It's important to note that the specific impact of these outliers on your model's results may differ from the previous model.
+
+The random scattering of residuals still indicates that the current model captures most of the relevant information in the data, as there is no discernible pattern in the residuals. This suggests that the combined Ridge and Lasso regression adequately accounts for the relationships between the predictor variables and the response variable.
+
+Considering the presence of the new outliers, it would be crucial to investigate their nature and potential implications. These outliers could potentially have a significant influence on the model's performance and the accuracy of its predictions. It may be necessary to evaluate whether these outliers should be treated as influential data points or if any corrective actions need to be taken to address their impact on the model.
+
+Overall, the observation of random scattering and the presence of outliers at -0.6 and 0.4 on the y-axis indicate that the current model, incorporating both Ridge and Lasso regression, provides a reasonably good fit to the data. However, further analysis and consideration of the outliers are necessary to fully understand their effect on the model's outcomes.
+
+
+```{r}
+# Q-Q plots for each model
+
+qqPlot(resid(forward_model), main="Q-Q Plot for Forward Selection Model")
+qqPlot(resid(backward_model), main="Q-Q Plot for Backward Selection Model")
+qqPlot(resid(cv_model$finalModel), main="Q-Q Plot for Cross-Validation Model")
+qqPlot(predict(forward_model, ml) - ml$AVG_EPRICE, main="Q-Q Plot for Ridge Regression Model")
+qqPlot(predict(backward_model, ml) - ml$AVG_EPRICE, main="Q-Q Plot for Lasso Regression Model")
+
+```
+
+**INTERPRETATION:**
+Observation: The Q-Q plot indicates that the residuals of the model are distributed approximately normally. The majority of the data points lie close to the straight line, suggesting a good fit to the normal distribution. However, there are a few data points that deviate slightly from the line, particularly towards the upper and lower tails.
+
+Interpretation: The Q-Q plot provides insight into the normality of the residuals in the model. The fact that the majority of the data points align closely with the straight line indicates that the residuals follow a normal distribution. This is a desirable characteristic as it suggests that the assumptions of the model, such as linearity and constant variance, are reasonably met.
+
+The slight deviations observed in the tails of the Q-Q plot may indicate some departures from normality. It's important to note that these deviations could be caused by factors such as outliers or specific patterns in the data that are not captured by the model. It would be beneficial to investigate these deviations further to understand their potential implications for the model's performance.
+
+Overall, the Q-Q plot provides evidence that the residuals are approximately normally distributed, supporting the validity of the model's assumptions. However, the slight deviations in the tails suggest the presence of some residual patterns that warrant further investigation.
+
+
+```{r}
+# Basic residuals plot
+
+# Load the necessary library
+library(ggplot2)
+
+# Fit a model (as an example, we'll use a simple linear regression)
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+
+model <- lm(AVG_EPRICE ~ ., data = ml)
+
+# Generate residuals
+residuals <- resid(model)
+
+# Generate a data frame for plotting
+plot_data <- data.frame(
+Fitted = fitted(model),
+Residuals = residuals
+)
+
+# Generate the plot
+ggplot(plot_data, aes(x = Fitted, y = Residuals)) +
+geom_point() +
+geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+theme_minimal() +
+labs(x = "Fitted values", y = "Residuals", title = "Residuals vs Fitted values")
+
+```
+
+**INTERPRETATION:**
+Observation: The residual vs. fit plot shows that the residuals are distributed randomly and evenly around zero for different levels of the predicted values (fits). There is no visible pattern or systematic trend in the distribution of residuals across the range of predicted values. The residuals appear to be scattered symmetrically above and below the zero line.
+
+Interpretation: The residual vs. fit plot provides insight into the relationship between the residuals and the predicted values in the model. The random distribution of residuals around zero suggests that the model's assumptions of constant variance and linearity are reasonably met. This indicates that the model captures the overall trend in the data and accounts for the relationship between the predictor variables and the response variable adequately.
+
+The even distribution of residuals above and below the zero line further supports the absence of any systematic bias or trend in the model's predictions. It indicates that the model is not consistently overestimating or underestimating the response variable across different levels of the predicted values.
+
+Overall, the residual vs. fit plot shows that the residuals are normally distributed and exhibit random variability around zero, suggesting that the model is a good fit for the data. The absence of any discernible pattern or trend in the residuals indicates that the model adequately captures the relationships between the predictor variables and the response variable.
+
+
+```{r}
+
+# Fit a model (as an example, we'll use a simple linear regression)
+ml = read_xlsx("C:/Users/wezhi/Desktop/YO/SEM 3/EDA - Final Project/elec_data.xlsx")
+model <- lm(AVG_EPRICE~ ., data = ml)
+
+# Use the qqnorm() function to create the QQ plot for the residuals
+qqnorm(resid(model))
+qqline(resid(model))
+
+```
+
+**INTERPRETATION:**
+The Q-Q plot provides insight into the normality of the residuals in the model. The fact that the majority of the data points align closely with the straight line indicates that the residuals follow a normal distribution. This is a desirable characteristic as it suggests that the assumptions of the model, such as linearity and constant variance, are reasonably met.
